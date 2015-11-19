@@ -10,23 +10,8 @@ import (
 	"math"
 
 	"github.com/boltdb/bolt"
+	"github.com/tylerchr/parallel-database/query"
 )
-
-type Query struct {
-	Metrics []QueryMetric
-	Filter []QueryFilter
-}
-
-type QueryMetric struct {
-	Column string
-	Metric string
-}
-
-type QueryFilter struct {
-	Column string
-	Operator string
-	Operand string
-}
 
 func main() {
 	doWork()
@@ -43,16 +28,15 @@ func doWork() {
 	// start the timer
 	t0 := time.Now()
 
-	query := Query{
-		Metrics: []QueryMetric{
-			QueryMetric{Column: "song_hotttnesss", Metric: "average"},
+	query := query.Query{
+		Metrics: []query.QueryMetric{
+			query.QueryMetric{Column: "song_hotttnesss", Metric: "average"},
 		},
-		Filter: []QueryFilter{
-			QueryFilter{Column: "title", Operator: "contains", Operand: "One"},
-			QueryFilter{Column: "artist_location", Operator: "equals", Operand: "Detroit, MI"},
+		Filter: []query.QueryFilter{
+			query.QueryFilter{Column: "title", Operator: "contains", Operand: "One"},
+			query.QueryFilter{Column: "artist_location", Operator: "equals", Operand: "Detroit, MI"},
 		},
 	}
-
 
 	// validate query
 	// make sure query is semantically valid
@@ -128,7 +112,7 @@ func doWork() {
 
 }
 
-func evaluateFilters(filters []QueryFilter, songMap map[string][]byte) (bool, error) {
+func evaluateFilters(filters []query.QueryFilter, songMap map[string][]byte) (bool, error) {
 	for _, filter := range filters {
 		op := filter.Operator
 		switch op {
