@@ -1,34 +1,36 @@
 package main
 
 import (
-	"github.com/boltdb/bolt"
-	"os"
 	"bufio"
-	"fmt"
-	"strings"
-	"errors"
+	"bytes"
 	"crypto/md5"
 	"encoding/binary"
-	"bytes"
+	"errors"
+	"fmt"
+	"github.com/boltdb/bolt"
+	"os"
 	"strconv"
+	"strings"
 )
 
-const DBFILE = "data.db"
-const INPUTFILE = "mdscsv.txt"
-const SCHEMABUCKET = "songsSchema"
-const SONGSBUCKET = "songs"
-const KEYCOLUMN = "track_id"
+const (
+	DBFILE       = "../data.db"
+	INPUTFILE    = "../songs.tsv"
+	SCHEMABUCKET = "songsSchema"
+	SONGSBUCKET  = "songs"
+	KEYCOLUMN    = "track_id"
+)
 
 type Column struct {
-    name string
-    dataType string
+	name     string
+	dataType string
 }
 
 func main() {
 
 	var file *os.File
 	var schema []Column
-	
+
 	db, err := bolt.Open(DBFILE, 0600, nil)
 
 	checkError(err)
@@ -67,14 +69,14 @@ func main() {
 		}
 
 		// Add songs to DB
- 		hasher := md5.New()
+		hasher := md5.New()
 		for scanner.Scan() {
 
 			columns := parseLine(scanner.Text(), schema)
 
 			hasher.Write([]byte(columns[KEYCOLUMN]))
 			keyPrefix := string(hasher.Sum(nil))
-			
+
 			for columnName, value := range columns {
 				key := keyPrefix + "_" + columnName
 				err = putTypedValue(b, key, value, dataTypeMap[columnName])
@@ -115,13 +117,13 @@ func getTableSchema(scanner *bufio.Scanner) ([]Column, error) {
 
 	// Sanity check
 	if len(columnNames) != len(dataTypes) {
-		return nil,  errors.New("Invalid input file")
+		return nil, errors.New("Invalid input file")
 	}
 
 	schema := make([]Column, len(columnNames))
 
 	for i := 0; i < len(columnNames); i++ {
-		schema[i] = Column{name:columnNames[i], dataType:dataTypes[i]}
+		schema[i] = Column{name: columnNames[i], dataType: dataTypes[i]}
 	}
 
 	return schema, nil
@@ -143,14 +145,14 @@ func saveMetaData(tx *bolt.Tx, schema []Column) error {
 
 }
 
-func addSongs(tx *bolt.Tx, ) {
+func addSongs(tx *bolt.Tx) {
 
 }
 
 func parseLine(line string, schema []Column) map[string]string {
 	columns := make(map[string]string)
 	data := strings.Split(line, "\t")
-	
+
 	for i := 0; i < len(data); i++ {
 		columns[schema[i].name] = data[i]
 	}
@@ -163,20 +165,18 @@ func putTypedValue(bucket *bolt.Bucket, key string, value string, dataType strin
 	buf := new(bytes.Buffer)
 
 	switch dataType {
-		case "int":
-			i64, err := strconv.ParseInt(value, 10, 64)
-			checkError(err)
-			binary.Write(buf, binary.BigEndian, i64)
-		case "float":
-			f64, err := strconv.ParseFloat(value, 64)
-			checkError(err)
-			binary.Write(buf, binary.BigEndian, f64)
-		default:
-			binary.Write(buf, binary.BigEndian, value)
-			err := bucket.Put([]byte(key), []byte(value))
-			return err
+	case "int":
+		i64, err := strconv.ParseInt(value, 10, 64)
+		checkError(err)
+		binary.Write(buf, binary.BigEndian, i64)
+	case "float":
+		f64, err := strconv.ParseFloat(value, 64)
+		checkError(err)
+		binary.Write(buf, binary.BigEndian, f64)
+	default:
+		err := bucket.Put([]byte(key), []byte(value))
+		return err
 	}
-	
 
 	err := bucket.Put([]byte(key), buf.Bytes())
 
@@ -184,7 +184,7 @@ func putTypedValue(bucket *bolt.Bucket, key string, value string, dataType strin
 }
 
 func checkError(err error) {
-	if (err != nil) {
+	if err != nil {
 		panic(err)
 	}
 }
