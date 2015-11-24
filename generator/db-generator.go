@@ -69,14 +69,17 @@ func main() {
 		}
 
 		// Add songs to DB
-		hasher := md5.New()
+		count := 1;
 		for scanner.Scan() {
 
 			columns := parseLine(scanner.Text(), schema)
 
-			hasher.Write([]byte(columns[KEYCOLUMN]))
-			keyPrefix := string(hasher.Sum(nil))
-
+			hash := md5.Sum([]byte(columns[KEYCOLUMN]))
+			keyPrefix := string(hash[:])
+			if count % 10000 == 0 {
+				fmt.Println(hash, count)
+			}
+			count++
 			for columnName, value := range columns {
 				key := keyPrefix + "_" + columnName
 				err = putTypedValue(b, key, value, dataTypeMap[columnName])
