@@ -11,11 +11,13 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"math"
+	"time"
 )
 
 const (
 	DBFILE       = "../data.db"
-	INPUTFILE    = "../songs.tsv"
+	INPUTFILE    = "msd.txt"
 	SCHEMABUCKET = "songsSchema"
 	SONGSBUCKET  = "songs"
 	KEYCOLUMN    = "track_id"
@@ -69,14 +71,15 @@ func main() {
 		}
 
 		// Add songs to DB
-		hasher := md5.New()
+		count := 1;
+		startTime := time.Now()
 		for scanner.Scan() {
 
 			columns := parseLine(scanner.Text(), schema)
 
-			hasher.Write([]byte(columns[KEYCOLUMN]))
-			keyPrefix := string(hasher.Sum(nil))
-
+			hash := md5.Sum([]byte(columns[KEYCOLUMN]))
+			keyPrefix := string(hash[:])
+			
 			for columnName, value := range columns {
 				key := keyPrefix + "_" + columnName
 				err = putTypedValue(b, key, value, dataTypeMap[columnName])
@@ -85,6 +88,14 @@ func main() {
 					return err
 				}
 			}
+
+			if count % 10000 == 0 {
+				fmt.Printf("[%d] took %s\n", count, time.Since(startTime))
+				startTime = time.Now()
+			}
+
+			count++
+
 		}
 
 		return err
@@ -145,10 +156,6 @@ func saveMetaData(tx *bolt.Tx, schema []Column) error {
 
 }
 
-func addSongs(tx *bolt.Tx) {
-
-}
-
 func parseLine(line string, schema []Column) map[string]string {
 	columns := make(map[string]string)
 	data := strings.Split(line, "\t")
@@ -163,19 +170,30 @@ func parseLine(line string, schema []Column) map[string]string {
 func putTypedValue(bucket *bolt.Bucket, key string, value string, dataType string) error {
 
 	buf := new(bytes.Buffer)
+	shouldWrite := true;
 
 	switch dataType {
 	case "int":
 		i64, err := strconv.ParseInt(value, 10, 64)
 		checkError(err)
 		binary.Write(buf, binary.BigEndian, i64)
+
 	case "float":
 		f64, err := strconv.ParseFloat(value, 64)
 		checkError(err)
 		binary.Write(buf, binary.BigEndian, f64)
+
+		if math.IsNaN(f64) {
+			shouldWrite = false
+		}
+
 	default:
 		err := bucket.Put([]byte(key), []byte(value))
 		return err
+	}
+
+	if !shouldWrite {
+		return nil
 	}
 
 	err := bucket.Put([]byte(key), buf.Bytes())
