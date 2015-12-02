@@ -53,6 +53,52 @@ func (aa *CountAccumulator) Add(data []byte) error {
 	return nil
 }
 
+type MinAccumulator struct{
+	Col string
+
+	min float64
+}
+
+func (aa *MinAccumulator) Column() string {
+	return aa.Col
+}
+
+func (aa *MinAccumulator) Add(data []byte) error {
+	var number float64
+	binary.Read(bytes.NewReader(data), binary.BigEndian, &number)
+	if !math.IsNaN(number) && number < aa.min {
+		aa.min = number
+	} else {
+		// TODO: we should not save NaN values to the db
+		// return fmt.Errorf("field not a number: %v", data)
+	}
+
+	return nil
+}
+
+type MaxAccumulator struct{
+	Col string
+
+	max float64
+}
+
+func (aa *MaxAccumulator) Column() string {
+	return aa.Col
+}
+
+func (aa *MaxAccumulator) Add(data []byte) error {
+	var number float64
+	binary.Read(bytes.NewReader(data), binary.BigEndian, &number)
+	if !math.IsNaN(number) && number > aa.max {
+		aa.max = number
+	} else {
+		// TODO: we should not save NaN values to the db
+		// return fmt.Errorf("field not a number: %v", data)
+	}
+
+	return nil
+}
+
 type DebugAccumulator struct{
 	Col string
 
