@@ -11,11 +11,12 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sort"
 )
 
 const (
 	DBFILE       = "../data.db"
-	INPUTFILE    = "../songs.tsv"
+	INPUTFILE    = "msd.txt"
 	SCHEMABUCKET = "songsSchema"
 	SONGSBUCKET  = "songs"
 	KEYCOLUMN    = "track_id"
@@ -68,20 +69,35 @@ func main() {
 			return fmt.Errorf("create bucket: %s", err)
 		}
 
+		// Temporary map to sort the keys
+		var columnMap = make(map[string]map[string]string)
+
 		// Add songs to DB
 		count := 1;
 		for scanner.Scan() {
 
 			columns := parseLine(scanner.Text(), schema)
-
 			hash := md5.Sum([]byte(columns[KEYCOLUMN]))
-			keyPrefix := string(hash[:])
+
+			columnMap[string(hash[:])] = columns
+
+		}
+
+		var keys []string
+		for k := range columnMap {
+			keys = append(keys, k)
+		}
+
+		sort.Strings(keys)
+
+		// Iterate over sorted keys
+		for _, k := range keys {
 			if count % 10000 == 0 {
-				fmt.Println(hash, count)
+				fmt.Println(k, count)
 			}
 			count++
-			for columnName, value := range columns {
-				key := keyPrefix + "_" + columnName
+			for columnName, value := range columnMap[k] {
+				key := k + "_" + columnName
 				err = putTypedValue(b, key, value, dataTypeMap[columnName])
 
 				if err != nil {
