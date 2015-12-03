@@ -38,16 +38,36 @@ func main() {
 
 	reader := bufio.NewReader(os.Stdin)
 
+replLoop:
 	for {
 
-			fmt.Print("> ")
-			text, _ := reader.ReadString('\n')
+		fmt.Print("⚡  ")
+		text, _ := reader.ReadString('\n')
 
-			if text == "goodbye\n" {
-					fmt.Println("Goodbye!")
-					break
-			}
+		switch text {
 
+		case "help\n":
+			fmt.Println("sorry")
+
+		case "quit\n":
+			fmt.Println("Goodbye!")
+			break replLoop
+
+		case "stats\n":
+			fmt.Printf("%#v\n", db.Stats())
+
+		case "fields\n":
+			db.View(func(tx *bolt.Tx) error {
+				var idx int32
+				c := tx.Bucket([]byte("songsSchema")).Cursor()
+				for k, v := c.First(); k != nil; k, v = c.Next() {
+					fmt.Printf("% 3d %-24s => %s\n", idx, k, v)
+					idx++
+				}
+				return nil
+			})
+
+		default:
 			if q, err := parser.ParseQuery(text); err != nil {
 				fmt.Printf("[error] %v\n", err)
 			} else {
@@ -57,8 +77,9 @@ func main() {
 				fmt.Printf("took %v\n", time.Now().Sub(t0))
 			}
 
-	}
+		}
 
+	}
 
 }
 
@@ -73,6 +94,8 @@ func executeQuery(db *bolt.DB, q query.Query) {
 	accs := make([]Accumulator, len(q.Metrics))
 	for i, metric := range q.Metrics {
 		switch metric.Metric {
+		case "avg":
+			fallthrough
 		case "average":
 			accs[i] = &AverageAccumulator{Col: metric.Column}
 		case "count":
