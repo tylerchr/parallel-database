@@ -18,7 +18,7 @@ import (
 
 const (
 	DBFILE       = "../data.db"
-	INPUTFILE    = "msd.txt"
+	INPUTFILE    = "./all_songs.tsv"
 	SCHEMABUCKET = "songsSchema"
 	SONGSBUCKET  = "songs"
 	KEYCOLUMN    = "track_id"

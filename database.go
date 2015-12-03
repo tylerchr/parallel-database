@@ -41,7 +41,7 @@ func (db *Database) Fields() map[string]string {
 
 }
 
-func (db *Database) Execute(q query.Query) error {
+func (db *Database) ExecuteRange(q query.Query, start, end byte) error {
 
 	// validate query
 	// make sure query is semantically valid
@@ -73,8 +73,9 @@ func (db *Database) Execute(q query.Query) error {
 		songMap := make(map[string][]byte, 10)
 		var currentRecord []byte
 
+		idx := 0
 		finishedLastRow := false
-		for k, v := c.First(); k != nil || finishedLastRow == false; k, v = c.Next() {
+		for k, v := c.Seek([]byte{start}); (k != nil && k[0] <= end) || finishedLastRow == false; k, v = c.Next() {
 
 			if k == nil || !bytes.HasPrefix(k, currentRecord) {
 
@@ -82,7 +83,7 @@ func (db *Database) Execute(q query.Query) error {
 				if len(songMap) > 0 {
 
 					if passesFilters, err := db.evaluateFilters(q.Filter, songMap); err != nil {
-						panic(err)
+						return err
 					} else if passesFilters {
 
 						for _, acc := range accs {
@@ -106,7 +107,7 @@ func (db *Database) Execute(q query.Query) error {
 
 			}
 
-			if k != nil {
+			if k != nil && k[0] <= end {
 				currentRecord = k[0:16]
 
 				// split the key into useful parts
@@ -118,9 +119,11 @@ func (db *Database) Execute(q query.Query) error {
 				finishedLastRow = true
 			}
 
+			idx += 1
 		}
 
 		fmt.Printf("Scanned %d rows\n", count)
+		fmt.Printf("Scanned %d keys\n", idx)
 
 		for _, acc := range accs {
 			fmt.Printf("%#v\n", acc)

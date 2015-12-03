@@ -39,6 +39,7 @@ func main() {
 	term.SetPrompt("⚡  ")
 	line, err := term.ReadLine()
 	for {
+
 		if err == io.EOF {
 			term.Write([]byte(line))
 			fmt.Println()
@@ -60,6 +61,11 @@ func main() {
 			case "stats":
 				fmt.Printf("%#v\n", db.BoltDatabase.Stats())
 
+			case "history":
+				for i, entry := range term.GetHistory() {
+					fmt.Printf("% 3d %s\n", i, entry)
+				}
+
 			case "fields":
 				var idx int32
 				for field, fieldType := range db.Fields() {
@@ -73,7 +79,7 @@ func main() {
 				} else {
 					fmt.Printf("[parsed] %v\n", q)
 					t0 := time.Now()
-					db.Execute(q)
+					db.ExecuteRange(q, byte(0x00), byte(0xFF))
 					fmt.Printf("took %v\n", time.Now().Sub(t0))
 				}
 			}
