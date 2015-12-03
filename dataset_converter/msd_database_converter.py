@@ -65,7 +65,7 @@ def get_all_data(target, dbfile):
         "string",
         "float",
         "float",
-        "flaot",
+        "float",
         "int",
         "int"
     ))
