@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"strings"
 	"time"
-	"bufio"
-	"os"
 
+	"github.com/carmark/pseudo-terminal-go/terminal"
 	"github.com/tylerchr/parallel-database/query/parser"
 )
 
@@ -28,47 +29,58 @@ func main() {
 
 	// executeQuery(db, query)
 
-	reader := bufio.NewReader(os.Stdin)
-
-replLoop:
-	for {
-
-		fmt.Print("⚡  ")
-		text, _ := reader.ReadString('\n')
-
-		switch text {
-
-		case "help\n":
-			fmt.Println("sorry")
-
-		case "quit\n":
-			fmt.Println("Goodbye!")
-			break replLoop
-
-		case "stats\n":
-			fmt.Printf("%#v\n", db.BoltDatabase.Stats())
-
-		case "fields\n":
-			var idx int32
-			for field, fieldType := range db.Fields() {
-				fmt.Printf("% 3d %-24s => %s\n", idx, field, fieldType)
-				idx++
-			}
-
-		default:
-			if q, err := parser.ParseQuery(text); err != nil {
-				fmt.Printf("[error] %v\n", err)
-			} else {
-				fmt.Printf("[parsed] %v\n", q)
-				t0 := time.Now()
-				db.Execute(q)
-				fmt.Printf("took %v\n", time.Now().Sub(t0))
-			}
-
-		}
-
+	term, err := terminal.NewWithStdInOut()
+	if err != nil {
+		panic(err)
 	}
 
-	db.Close()
+	defer term.ReleaseFromStdInOut() // defer this
+	fmt.Println("Ctrl-D to exit")
+	term.SetPrompt("⚡  ")
+	line, err := term.ReadLine()
+	for {
+		if err == io.EOF {
+			term.Write([]byte(line))
+			fmt.Println()
+			return
+		}
+		if (err != nil && strings.Contains(err.Error(), "control-c break")) || len(line) == 0 {
+			line, err = term.ReadLine()
+		} else {
+			//term.Write([]byte(line + "\r\n"))
 
+			switch line {
+
+			case "help":
+				fmt.Println("sorry")
+
+			case "quit":
+				fmt.Println("Goodbye!")
+
+			case "stats":
+				fmt.Printf("%#v\n", db.BoltDatabase.Stats())
+
+			case "fields":
+				var idx int32
+				for field, fieldType := range db.Fields() {
+					fmt.Printf("% 3d %-24s => %s\n", idx, field, fieldType)
+					idx++
+				}
+
+			default:
+				if q, err := parser.ParseQuery(line); err != nil {
+					fmt.Printf("[error] %v\n", err)
+				} else {
+					fmt.Printf("[parsed] %v\n", q)
+					t0 := time.Now()
+					db.Execute(q)
+					fmt.Printf("took %v\n", time.Now().Sub(t0))
+				}
+			}
+
+			line, err = term.ReadLine()
+		}
+	}
+	db.Close()
+	term.Write([]byte(line))
 }

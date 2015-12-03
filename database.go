@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"bytes"
+	"fmt"
 	"reflect"
 
 	"github.com/boltdb/bolt"
@@ -29,6 +29,7 @@ func (db *Database) Fields() map[string]string {
 	fields := make(map[string]string, 0)
 
 	db.BoltDatabase.View(func(tx *bolt.Tx) error {
+		fmt.Println(tx)
 		c := tx.Bucket([]byte("songsSchema")).Cursor()
 		for k, v := c.First(); k != nil; k, v = c.Next() {
 			fields[string(k)] = string(v)
