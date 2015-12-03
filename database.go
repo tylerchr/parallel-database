@@ -29,7 +29,6 @@ func (db *Database) Fields() map[string]string {
 	fields := make(map[string]string, 0)
 
 	db.BoltDatabase.View(func(tx *bolt.Tx) error {
-		fmt.Println(tx)
 		c := tx.Bucket([]byte("songsSchema")).Cursor()
 		for k, v := c.First(); k != nil; k, v = c.Next() {
 			fields[string(k)] = string(v)
@@ -42,12 +41,6 @@ func (db *Database) Fields() map[string]string {
 }
 
 func (db *Database) ExecuteRange(q query.Query, start, end byte) error {
-
-	// validate query
-	// make sure query is semantically valid
-	valid := true
-
-	_ = valid
 
 	accs := make([]Accumulator, len(q.Metrics))
 	for i, metric := range q.Metrics {
@@ -63,6 +56,16 @@ func (db *Database) ExecuteRange(q query.Query, start, end byte) error {
 		case "max":
 			accs[i] = &MaxAccumulator{Col: metric.Column}
 		}
+	}
+
+	// make sure query is semantically valid
+	err := db.validateQuerySemantics(q, accs)
+
+	if err != nil {
+		fmt.Println(err)
+		return err
+	} else {
+		fmt.Printf("Query is semantically valid\n")
 	}
 
 	return db.BoltDatabase.View(func(tx *bolt.Tx) error {
@@ -154,6 +157,77 @@ func (db *Database) evaluateFilters(filters []query.QueryFilter, songMap map[str
 
 	return true, nil
 }
+
+func (db *Database) validateQuerySemantics(q query.Query, accs []Accumulator) error {
+
+	schema := db.Fields()
+
+	for i, metric := range q.Metrics {
+
+		if schema[metric.Column] == "" {
+			return fmt.Errorf("Column '%s' does not exist", metric.Column)
+		}
+
+		if !accs[i].CanAccumulateType(schema[metric.Column]) {
+			return fmt.Errorf("Invalid metric '%s' for field type '%s'", metric.Metric, schema[metric.Column])
+		}
+	}
+
+	for _, filter := range q.Filter {
+
+		if schema[filter.Column] == "" {
+			return fmt.Errorf("Column '%s' does not exist", filter.Column)
+		}
+
+		switch schema[filter.Column] {
+		case "int":
+			switch filter.Operator {
+			case "equals":
+			case "between":
+			case "<":
+			case ">":
+			case "contains":
+				fallthrough
+			default:
+				return fmt.Errorf("Invalid operator '%s' for field type '%s'", filter.Operator, schema[filter.Column])
+
+			}
+
+		case "float":
+			switch filter.Operator {
+			case "equals":
+			case "between":
+			case "<":
+			case ">":
+			case "contains":
+				fallthrough
+			default:
+				return fmt.Errorf("Invalid operator '%s' for field type '%s'", filter.Operator, schema[filter.Column])
+
+			}
+		case "string":
+			switch filter.Operator {
+			case "equals":
+			case "contains":
+			case "<":
+				fallthrough
+			case ">":
+				fallthrough
+			case "between":
+				fallthrough
+			default:
+				return fmt.Errorf("Invalid operator '%s' for field type '%s'", filter.Operator, schema[filter.Column])
+			}
+		default:
+			return fmt.Errorf("Fatal Error")
+		}
+
+	}
+
+	return nil
+
+}
+
 
 func (db *Database) Close() {
 	db.BoltDatabase.Close()
