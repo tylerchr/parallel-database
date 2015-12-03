@@ -3,7 +3,6 @@ package parser
 
 import (
     "fmt"
-    "log"
     "strings"
     "text/scanner"
 
@@ -15,24 +14,38 @@ import (
     tok int
     val string
     ident string
+    sel query.Query
     metrics []query.QueryMetric
     metric query.QueryMetric
+    filters []query.QueryFilter
+    filter query.QueryFilter
 }
 
-%token tok_IDENT
+%token SELECT FROM WHERE AND
+%token GENERIC_IDENTIFIER
 
-%type <ident> tok_IDENT
+%type <ident> GENERIC_IDENTIFIER
+%type <sel> sel
 %type <metrics> metrics
 %type <metric> metric
+%type <filters> where_terms where_clause
+%type <filter> where_term
 
 // average(song_hotttnesss)
 // average(song_hotttnesss) : is(artist_location, "Detroit, MI")
 
+// select average(song_hotttnesss) where artist_location == "Detroit, MI"
+
 %%
 
-goal
-	: metrics
-    	{ yylex.(*lex).query = query.Query{Metrics: $1} }
+query
+    : sel
+        { yylex.(*lex).query = $1 }
+    ;
+
+sel
+    : SELECT metrics where_clause
+        { $$ = query.Query{Metrics: $2, Filter: $3} }
     ;
 
 metrics
@@ -43,8 +56,27 @@ metrics
 	;
 
 metric
-    : tok_IDENT '(' tok_IDENT ')'
+    : GENERIC_IDENTIFIER '(' GENERIC_IDENTIFIER ')'
         { $$.Column, $$.Metric = $3, $1 }
+    ;
+
+where_clause
+    : WHERE where_terms
+        { $$ = $2 }
+    |
+        { $$ = []query.QueryFilter{} }
+    ;
+
+where_terms
+    : where_term
+        { $$ = []query.QueryFilter{$1} }
+    | where_terms AND where_term
+        { $$ = append($1, $3) }
+    ;
+
+where_term
+    : GENERIC_IDENTIFIER GENERIC_IDENTIFIER GENERIC_IDENTIFIER
+        { $$.Column, $$.Operator, $$.Operand = $1, $2, $3 }
     ;
 
 %%
@@ -57,6 +89,7 @@ type token struct {
 type lex struct {
 	tokens []token
 	query  query.Query
+    error  error
 }
 
 func (l *lex) Lex(lval *yySymType) int {
@@ -71,7 +104,7 @@ func (l *lex) Lex(lval *yySymType) int {
 }
 
 func (l *lex) Error(e string) {
-    log.Fatal(e)
+    l.error = fmt.Errorf(e)
 }
 
 func ParseQuery(qs string) (query.Query, error) {
@@ -81,9 +114,9 @@ func ParseQuery(qs string) (query.Query, error) {
         return query.Query{}, err
     }
 
-    l := &lex{tokens, query.Query{}}
+    l := &lex{tokens, query.Query{}, nil}
     yyParse(l)
-    return l.query, nil
+    return l.query, l.error
 }
 
 func TokenizeQuery(q string) ([]token, error) {
@@ -102,8 +135,18 @@ func TokenizeQuery(q string) ([]token, error) {
     for tok := s.Scan(); tok != scanner.EOF && err == nil; tok = s.Scan() {
         if strings.ContainsRune("():,", tok) {
             tokens = append(tokens, token{int(tok), ""})
+        } else if s.TokenText() == "SELECT" {
+            tokens = append(tokens, token{SELECT, ""})
+        } else if s.TokenText() == "WHERE" {
+            tokens = append(tokens, token{WHERE, ""})
+        } else if s.TokenText() == "AND" {
+            tokens = append(tokens, token{AND, ""})
         } else {
-            tokens = append(tokens, token{tok_IDENT, s.TokenText()})
+            text := s.TokenText()
+            if strings.HasPrefix(text, "\"") && strings.HasSuffix(text, "\"") {
+                text = text[1:len(text)-1]
+            }
+            tokens = append(tokens, token{GENERIC_IDENTIFIER, text})
         }
     }
 

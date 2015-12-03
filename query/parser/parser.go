@@ -6,30 +6,40 @@ import __yyfmt__ "fmt"
 //line parser.y:2
 import (
 	"fmt"
-	"log"
 	"strings"
 	"text/scanner"
 
 	"github.com/tylerchr/parallel-database/query"
 )
 
-//line parser.y:14
+//line parser.y:13
 type yySymType struct {
 	yys     int
 	tok     int
 	val     string
 	ident   string
+	sel     query.Query
 	metrics []query.QueryMetric
 	metric  query.QueryMetric
+	filters []query.QueryFilter
+	filter  query.QueryFilter
 }
 
-const tok_IDENT = 57346
+const SELECT = 57346
+const FROM = 57347
+const WHERE = 57348
+const AND = 57349
+const GENERIC_IDENTIFIER = 57350
 
 var yyToknames = [...]string{
 	"$end",
 	"error",
 	"$unk",
-	"tok_IDENT",
+	"SELECT",
+	"FROM",
+	"WHERE",
+	"AND",
+	"GENERIC_IDENTIFIER",
 	"','",
 	"'('",
 	"')'",
@@ -40,7 +50,7 @@ const yyEofCode = 1
 const yyErrCode = 2
 const yyMaxDepth = 200
 
-//line parser.y:50
+//line parser.y:82
 
 type token struct {
 	tok int
@@ -50,6 +60,7 @@ type token struct {
 type lex struct {
 	tokens []token
 	query  query.Query
+	error  error
 }
 
 func (l *lex) Lex(lval *yySymType) int {
@@ -64,7 +75,7 @@ func (l *lex) Lex(lval *yySymType) int {
 }
 
 func (l *lex) Error(e string) {
-	log.Fatal(e)
+	l.error = fmt.Errorf(e)
 }
 
 func ParseQuery(qs string) (query.Query, error) {
@@ -74,9 +85,9 @@ func ParseQuery(qs string) (query.Query, error) {
 		return query.Query{}, err
 	}
 
-	l := &lex{tokens, query.Query{}}
+	l := &lex{tokens, query.Query{}, nil}
 	yyParse(l)
-	return l.query, nil
+	return l.query, l.error
 }
 
 func TokenizeQuery(q string) ([]token, error) {
@@ -95,8 +106,18 @@ func TokenizeQuery(q string) ([]token, error) {
 	for tok := s.Scan(); tok != scanner.EOF && err == nil; tok = s.Scan() {
 		if strings.ContainsRune("():,", tok) {
 			tokens = append(tokens, token{int(tok), ""})
+		} else if s.TokenText() == "SELECT" {
+			tokens = append(tokens, token{SELECT, ""})
+		} else if s.TokenText() == "WHERE" {
+			tokens = append(tokens, token{WHERE, ""})
+		} else if s.TokenText() == "AND" {
+			tokens = append(tokens, token{AND, ""})
 		} else {
-			tokens = append(tokens, token{tok_IDENT, s.TokenText()})
+			text := s.TokenText()
+			if strings.HasPrefix(text, "\"") && strings.HasSuffix(text, "\"") {
+				text = text[1 : len(text)-1]
+			}
+			tokens = append(tokens, token{GENERIC_IDENTIFIER, text})
 		}
 	}
 
@@ -111,41 +132,50 @@ var yyExca = [...]int{
 	-2, 0,
 }
 
-const yyNprod = 5
+const yyNprod = 11
 const yyPrivate = 57344
 
 var yyTokenNames []string
 var yyStates []string
 
-const yyLast = 9
+const yyLast = 20
 
 var yyAct = [...]int{
 
-	9, 6, 3, 5, 8, 4, 1, 2, 7,
+	13, 18, 10, 9, 5, 16, 8, 20, 14, 17,
+	15, 6, 3, 11, 1, 7, 12, 19, 4, 2,
 }
 var yyPact = [...]int{
 
-	1, -1000, -2, -1000, -5, 1, 0, -1000, -7, -1000,
+	8, -1000, -1000, 3, -3, -1000, -8, -1000, 3, 0,
+	2, -1000, -2, -1000, 1, -10, 0, -1, -1000, -1000,
+	-1000,
 }
 var yyPgo = [...]int{
 
-	0, 7, 2, 6,
+	0, 19, 18, 4, 16, 15, 0, 14,
 }
 var yyR1 = [...]int{
 
-	0, 3, 1, 1, 2,
+	0, 7, 1, 2, 2, 3, 5, 5, 4, 4,
+	6,
 }
 var yyR2 = [...]int{
 
-	0, 1, 1, 3, 4,
+	0, 1, 3, 1, 3, 4, 2, 0, 1, 3,
+	3,
 }
 var yyChk = [...]int{
 
-	-1000, -3, -1, -2, 4, 5, 6, -2, 4, 7,
+	-1000, -7, -1, 4, -2, -3, 8, -5, 9, 6,
+	10, -3, -4, -6, 8, 8, 7, 8, 11, -6,
+	8,
 }
 var yyDef = [...]int{
 
-	0, -2, 1, 2, 0, 0, 0, 3, 0, 4,
+	0, -2, 1, 0, 7, 3, 0, 2, 0, 0,
+	0, 4, 6, 8, 0, 0, 0, 0, 5, 9,
+	10,
 }
 var yyTok1 = [...]int{
 
@@ -153,11 +183,11 @@ var yyTok1 = [...]int{
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-	6, 7, 3, 3, 5,
+	10, 11, 3, 3, 9,
 }
 var yyTok2 = [...]int{
 
-	2, 3, 4,
+	2, 3, 4, 5, 6, 7, 8,
 }
 var yyTok3 = [...]int{
 	0,
@@ -505,27 +535,63 @@ yydefault:
 
 	case 1:
 		yyDollar = yyS[yypt-1 : yypt+1]
-		//line parser.y:35
+		//line parser.y:43
 		{
-			yylex.(*lex).query = query.Query{Metrics: yyDollar[1].metrics}
+			yylex.(*lex).query = yyDollar[1].sel
 		}
 	case 2:
+		yyDollar = yyS[yypt-3 : yypt+1]
+		//line parser.y:48
+		{
+			yyVAL.sel = query.Query{Metrics: yyDollar[2].metrics, Filter: yyDollar[3].filters}
+		}
+	case 3:
 		yyDollar = yyS[yypt-1 : yypt+1]
-		//line parser.y:40
+		//line parser.y:53
 		{
 			yyVAL.metrics = []query.QueryMetric{yyDollar[1].metric}
 		}
-	case 3:
+	case 4:
 		yyDollar = yyS[yypt-3 : yypt+1]
-		//line parser.y:42
+		//line parser.y:55
 		{
 			yyVAL.metrics = append(yyDollar[1].metrics, yyDollar[3].metric)
 		}
-	case 4:
+	case 5:
 		yyDollar = yyS[yypt-4 : yypt+1]
-		//line parser.y:47
+		//line parser.y:60
 		{
 			yyVAL.metric.Column, yyVAL.metric.Metric = yyDollar[3].ident, yyDollar[1].ident
+		}
+	case 6:
+		yyDollar = yyS[yypt-2 : yypt+1]
+		//line parser.y:65
+		{
+			yyVAL.filters = yyDollar[2].filters
+		}
+	case 7:
+		yyDollar = yyS[yypt-0 : yypt+1]
+		//line parser.y:67
+		{
+			yyVAL.filters = []query.QueryFilter{}
+		}
+	case 8:
+		yyDollar = yyS[yypt-1 : yypt+1]
+		//line parser.y:72
+		{
+			yyVAL.filters = []query.QueryFilter{yyDollar[1].filter}
+		}
+	case 9:
+		yyDollar = yyS[yypt-3 : yypt+1]
+		//line parser.y:74
+		{
+			yyVAL.filters = append(yyDollar[1].filters, yyDollar[3].filter)
+		}
+	case 10:
+		yyDollar = yyS[yypt-3 : yypt+1]
+		//line parser.y:79
+		{
+			yyVAL.filter.Column, yyVAL.filter.Operator, yyVAL.filter.Operand = yyDollar[1].ident, yyDollar[2].ident, yyDollar[3].ident
 		}
 	}
 	goto yystack /* stack new state and value */
