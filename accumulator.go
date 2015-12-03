@@ -10,6 +10,7 @@ import (
 type Accumulator interface{
 	Column() string
 	Add(data []byte) error
+	CanAccumulateType(fieldType string) bool
 }
 
 type AverageAccumulator struct{
@@ -38,6 +39,19 @@ func (aa *AverageAccumulator) Add(data []byte) error {
 	return nil
 }
 
+func (aa *AverageAccumulator) CanAccumulateType(fieldType string) bool {
+	switch fieldType {
+	case "int":
+		fallthrough
+	case "float":
+		return true
+	case "string":
+		fallthrough
+	default:
+		return false
+	}
+}
+
 type CountAccumulator struct{
 	Col string
 
@@ -51,6 +65,10 @@ func (aa *CountAccumulator) Column() string {
 func (aa *CountAccumulator) Add(data []byte) error {
 	aa.ct += 1
 	return nil
+}
+
+func (ca *CountAccumulator) CanAccumulateType(fieldType string) bool {
+	return true
 }
 
 type MinAccumulator struct{
@@ -76,6 +94,19 @@ func (aa *MinAccumulator) Add(data []byte) error {
 	return nil
 }
 
+func (ma *MinAccumulator) CanAccumulateType(fieldType string) bool {
+	switch fieldType {
+	case "int":
+		fallthrough
+	case "float":
+		return true
+	case "string":
+		fallthrough
+	default:
+		return false
+	}
+}
+
 type MaxAccumulator struct{
 	Col string
 
@@ -99,6 +130,19 @@ func (aa *MaxAccumulator) Add(data []byte) error {
 	return nil
 }
 
+func (ma *MaxAccumulator) CanAccumulateType(fieldType string) bool {
+	switch fieldType {
+	case "int":
+		fallthrough
+	case "float":
+		return true
+	case "string":
+		fallthrough
+	default:
+		return false
+	}
+}
+
 type DebugAccumulator struct{
 	Col string
 
@@ -113,4 +157,8 @@ func (aa *DebugAccumulator) Add(data []byte) error {
 	fmt.Printf("% 3d  %s\n", aa.ct, data)
 	aa.ct += 1
 	return nil
+}
+
+func (da *DebugAccumulator) CanAccumulateType(fieldType string) bool {
+	return true
 }
