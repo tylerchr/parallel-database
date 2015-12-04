@@ -11,11 +11,7 @@ import (
 )
 
 func main() {
-
 	db, _ := NewDatabase("data.db")
-
-	// start the timer
-	// t0 := time.Now()
 
 	// query := query.Query{
 	// 	Metrics: []query.QueryMetric{
@@ -26,7 +22,6 @@ func main() {
 	// 		// query.QueryFilter{Column: "artist_location", Operator: "equals", Operand: "Detroit, MI"},
 	// 	},
 	// }
-
 	// executeQuery(db, query)
 
 	term, err := terminal.NewWithStdInOut()
@@ -35,11 +30,10 @@ func main() {
 	}
 
 	defer term.ReleaseFromStdInOut() // defer this
-	fmt.Println("Ctrl-D to exit")
+	fmt.Println("[ctrl-d or 'quit' to exit]")
 	term.SetPrompt("⚡  ")
 	line, err := term.ReadLine()
 	for {
-
 		if err == io.EOF {
 			term.Write([]byte(line))
 			fmt.Println()
@@ -48,15 +42,15 @@ func main() {
 		if (err != nil && strings.Contains(err.Error(), "control-c break")) || len(line) == 0 {
 			line, err = term.ReadLine()
 		} else {
-			//term.Write([]byte(line + "\r\n"))
-
 			switch line {
 
 			case "help":
 				fmt.Println("sorry")
 
 			case "quit":
-				fmt.Println("Goodbye!")
+				fmt.Println("exit")
+				db.Close()
+				return
 
 			case "stats":
 				fmt.Printf("%#v\n", db.BoltDatabase.Stats())
@@ -72,12 +66,14 @@ func main() {
 					fmt.Printf("% 3d %-24s => %s\n", idx, field, fieldType)
 					idx++
 				}
+			case "easter egg":
+				fmt.Printf("🐇\n\r")
 
 			default:
 				if q, err := parser.ParseQuery(line); err != nil {
 					fmt.Printf("[error] %v\n", err)
 				} else {
-					fmt.Printf("[parsed] %v\n", q)
+					fmt.Printf("[parsed] Metrics: %v Filters: %v\n", q.Metrics, q.Filter)
 					t0 := time.Now()
 					db.ExecuteRange(q, byte(0x00), byte(0xFF))
 					fmt.Printf("took %v\n", time.Now().Sub(t0))

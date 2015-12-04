@@ -189,8 +189,8 @@ func (db *Database) validateQuerySemantics(q query.Query, accs []Accumulator) er
 			case "contains":
 				fallthrough
 			default:
-				return fmt.Errorf("Invalid operator '%s' for field type '%s'", filter.Operator, schema[filter.Column])
-
+				return fmt.Errorf("Invalid operator '%s' for field type '%s'",
+					filter.Operator, schema[filter.Column])
 			}
 
 		case "float":
@@ -202,8 +202,8 @@ func (db *Database) validateQuerySemantics(q query.Query, accs []Accumulator) er
 			case "contains":
 				fallthrough
 			default:
-				return fmt.Errorf("Invalid operator '%s' for field type '%s'", filter.Operator, schema[filter.Column])
-
+				return fmt.Errorf("Invalid operator '%s' for field type '%s'",
+					filter.Operator, schema[filter.Column])
 			}
 		case "string":
 			switch filter.Operator {
@@ -216,7 +216,8 @@ func (db *Database) validateQuerySemantics(q query.Query, accs []Accumulator) er
 			case "between":
 				fallthrough
 			default:
-				return fmt.Errorf("Invalid operator '%s' for field type '%s'", filter.Operator, schema[filter.Column])
+				return fmt.Errorf("Invalid operator '%s' for field type '%s'",
+					filter.Operator, schema[filter.Column])
 			}
 		default:
 			return fmt.Errorf("Fatal Error")
@@ -227,7 +228,6 @@ func (db *Database) validateQuerySemantics(q query.Query, accs []Accumulator) er
 	return nil
 
 }
-
 
 func (db *Database) Close() {
 	db.BoltDatabase.Close()
