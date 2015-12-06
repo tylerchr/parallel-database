@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"reflect"
+	"sync"
 
 	"github.com/boltdb/bolt"
 	"github.com/tylerchr/parallel-database/query"
@@ -40,7 +41,77 @@ func (db *Database) Fields() map[string]string {
 
 }
 
-func (db *Database) ExecuteRange(q query.Query, start, end byte) error {
+func reduceAccumulators(accs [][]Accumulator) []Accumulator {
+
+	reducedAccs := make([]Accumulator, len(accs))
+
+	for i := 0; i < len(accs); i++ {
+		for j := 0; j < len(accs[i]); j++ {
+
+			if j == 0 {
+				reducedAccs[0] = accs[i][j]
+			} else {
+				// TODO reduce the accumulators
+			}
+
+		}
+	}
+
+	return reducedAccs
+}
+
+func (db *Database) Execute(q query.Query) error {
+	numNodes := 2
+
+	responses := make(chan []Accumulator)
+	_ = responses
+	var wg sync.WaitGroup
+	wg.Add(numNodes)
+
+	// make sure query is semantically valid
+	err := db.validateQuerySemantics(q)
+
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	accs := make([][]Accumulator, numNodes)
+
+	for i := 0; i < numNodes; i++ {
+		go func(node int) {
+			defer wg.Done()
+
+			start := node * (0xFF / numNodes)
+			end := start + (0xFF / numNodes)
+
+			if node + 1 < numNodes {
+				end--
+			} else {
+				end = 0xFF
+			}
+
+			queryError, partialAccs := db.ExecuteRange(q, byte(start), byte(end))
+
+			if queryError != nil {
+				err = queryError
+			}
+
+			accs[node] = partialAccs
+
+		}(i)
+	}
+
+	wg.Wait()
+
+	reducedAccs := reduceAccumulators(accs)
+	_ = reducedAccs
+
+	return err
+
+}
+
+func (db *Database) ExecuteRange(q query.Query, start, end byte) (error, []Accumulator) {
 
 	accs := make([]Accumulator, len(q.Metrics))
 	for i, metric := range q.Metrics {
@@ -58,17 +129,7 @@ func (db *Database) ExecuteRange(q query.Query, start, end byte) error {
 		}
 	}
 
-	// make sure query is semantically valid
-	err := db.validateQuerySemantics(q, accs)
-
-	if err != nil {
-		fmt.Println(err)
-		return err
-	} else {
-		fmt.Printf("Query is semantically valid\n")
-	}
-
-	return db.BoltDatabase.View(func(tx *bolt.Tx) error {
+	err := db.BoltDatabase.View(func(tx *bolt.Tx) error {
 		c := tx.Bucket([]byte("songs")).Cursor()
 
 		count := 0
@@ -136,6 +197,8 @@ func (db *Database) ExecuteRange(q query.Query, start, end byte) error {
 
 	})
 
+	return err, accs
+
 }
 
 func (db *Database) evaluateFilters(filters []query.QueryFilter, songMap map[string][]byte) (bool, error) {
@@ -158,7 +221,24 @@ func (db *Database) evaluateFilters(filters []query.QueryFilter, songMap map[str
 	return true, nil
 }
 
-func (db *Database) validateQuerySemantics(q query.Query, accs []Accumulator) error {
+func (db *Database) validateQuerySemantics(q query.Query) error {
+
+	accs := make([]Accumulator, len(q.Metrics))
+
+	for i, metric := range q.Metrics {
+		switch metric.Metric {
+		case "avg":
+			fallthrough
+		case "average":
+			accs[i] = &AverageAccumulator{Col: metric.Column}
+		case "count":
+			accs[i] = &CountAccumulator{Col: metric.Column}
+		case "min":
+			accs[i] = &MinAccumulator{Col: metric.Column}
+		case "max":
+			accs[i] = &MaxAccumulator{Col: metric.Column}
+		}
+	}
 
 	schema := db.Fields()
 

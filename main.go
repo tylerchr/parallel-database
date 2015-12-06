@@ -75,7 +75,10 @@ func main() {
 				} else {
 					fmt.Printf("[parsed] Metrics: %v Filters: %v\n", q.Metrics, q.Filter)
 					t0 := time.Now()
-					db.ExecuteRange(q, byte(0x00), byte(0xFF))
+
+					db.Execute(q)
+					// db.ExecuteRange(q, byte(0x00), byte(0xFF))
+
 					fmt.Printf("took %v\n", time.Now().Sub(t0))
 				}
 			}
