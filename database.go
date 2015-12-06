@@ -237,6 +237,8 @@ func (db *Database) validateQuerySemantics(q query.Query) error {
 			accs[i] = &MinAccumulator{Col: metric.Column}
 		case "max":
 			accs[i] = &MaxAccumulator{Col: metric.Column}
+		default:
+			return fmt.Errorf("Unknown metric '%s'\n", metric.Metric)
 		}
 	}
 
