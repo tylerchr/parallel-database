@@ -11,6 +11,7 @@ type Accumulator interface{
 	Column() string
 	Add(data []byte) error
 	CanAccumulateType(fieldType string) bool
+	Reduce(acc Accumulator) error
 }
 
 type AverageAccumulator struct{
@@ -37,6 +38,19 @@ func (aa *AverageAccumulator) Add(data []byte) error {
 	}
 
 	return nil
+}
+
+func (a *AverageAccumulator) Reduce(acc Accumulator) error {
+
+	if b, ok := acc.(*AverageAccumulator); ok {
+		a.sum += b.sum
+		a.ct += b.ct
+	} else {
+		return fmt.Errorf("ERROR: Got the wrong type in reduce function") 
+	}
+
+	return nil
+
 }
 
 func (aa *AverageAccumulator) CanAccumulateType(fieldType string) bool {
@@ -71,6 +85,15 @@ func (ca *CountAccumulator) CanAccumulateType(fieldType string) bool {
 	return true
 }
 
+func (ca *CountAccumulator) Reduce(acc Accumulator) error {
+	if b, ok := acc.(*CountAccumulator); ok {
+		ca.ct += b.ct
+	} else {
+		return fmt.Errorf("ERROR: Got the wrong type in reduce function") 
+	}
+	return nil
+}
+
 type MinAccumulator struct{
 	Col string
 
@@ -91,6 +114,17 @@ func (aa *MinAccumulator) Add(data []byte) error {
 		// return fmt.Errorf("field not a number: %v", data)
 	}
 
+	return nil
+}
+
+func (ma *MinAccumulator) Reduce(acc Accumulator) error {
+	if b, ok := acc.(*MinAccumulator); ok {
+		if ma.min > b.min {
+			ma.min = b.min
+		}
+	} else {
+		return fmt.Errorf("ERROR: Got the wrong type in reduce function") 
+	}
 	return nil
 }
 
@@ -130,6 +164,17 @@ func (aa *MaxAccumulator) Add(data []byte) error {
 	return nil
 }
 
+func (ma *MaxAccumulator) Reduce(acc Accumulator) error {
+	if b, ok := acc.(*MaxAccumulator); ok {
+		if ma.max < b.max {
+			ma.max = b.max
+		}
+	} else {
+		return fmt.Errorf("ERROR: Got the wrong type in reduce function") 
+	}
+	return nil
+}
+
 func (ma *MaxAccumulator) CanAccumulateType(fieldType string) bool {
 	switch fieldType {
 	case "int":
@@ -156,6 +201,11 @@ func (aa *DebugAccumulator) Column() string {
 func (aa *DebugAccumulator) Add(data []byte) error {
 	fmt.Printf("% 3d  %s\n", aa.ct, data)
 	aa.ct += 1
+	return nil
+}
+
+func (da *DebugAccumulator) Reduce(acc Accumulator) error {
+	fmt.Println("Reducing!!!")
 	return nil
 }
 

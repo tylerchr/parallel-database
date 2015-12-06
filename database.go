@@ -43,15 +43,15 @@ func (db *Database) Fields() map[string]string {
 
 func reduceAccumulators(accs [][]Accumulator) []Accumulator {
 
-	reducedAccs := make([]Accumulator, len(accs))
+	reducedAccs := make([]Accumulator, len(accs[0]))
 
 	for i := 0; i < len(accs); i++ {
 		for j := 0; j < len(accs[i]); j++ {
 
-			if j == 0 {
-				reducedAccs[0] = accs[i][j]
+			if i == 0 {
+				reducedAccs[j] = accs[i][j]
 			} else {
-				// TODO reduce the accumulators
+				reducedAccs[j].Reduce(accs[i][j])
 			}
 
 		}
@@ -105,7 +105,10 @@ func (db *Database) Execute(q query.Query) error {
 	wg.Wait()
 
 	reducedAccs := reduceAccumulators(accs)
-	_ = reducedAccs
+	
+	for _, acc := range reducedAccs {
+		fmt.Printf("%#v\n", acc)
+	}
 
 	return err
 
@@ -186,12 +189,12 @@ func (db *Database) ExecuteRange(q query.Query, start, end byte) (error, []Accum
 			idx += 1
 		}
 
-		fmt.Printf("Scanned %d rows\n", count)
-		fmt.Printf("Scanned %d keys\n", idx)
+		// fmt.Printf("Scanned %d rows\n", count)
+		// fmt.Printf("Scanned %d keys\n", idx)
 
-		for _, acc := range accs {
-			fmt.Printf("%#v\n", acc)
-		}
+		// for _, acc := range accs {
+		// 	fmt.Printf("%#v\n", acc)
+		// }
 
 		return nil
 
@@ -246,13 +249,18 @@ func (db *Database) validateQuerySemantics(q query.Query) error {
 
 	for i, metric := range q.Metrics {
 
-		if schema[metric.Column] == "" {
+		column := metric.Column
+
+		if schema[column] == "" {
 			return fmt.Errorf("Column '%s' does not exist", metric.Column)
 		}
 
-		if !accs[i].CanAccumulateType(schema[metric.Column]) {
-			return fmt.Errorf("Invalid metric '%s' for field type '%s'", metric.Metric, schema[metric.Column])
+		fmt.Println(accs[i])
+
+		if !accs[i].CanAccumulateType(schema[column]) {
+			return fmt.Errorf("Invalid metric '%s' for field type '%s'", metric.Metric, schema[column])
 		}
+
 	}
 
 	for _, filter := range q.Filter {
