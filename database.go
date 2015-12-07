@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"reflect"
 	"sync"
+	"strconv"
+	"encoding/binary"
 
 	"github.com/boltdb/bolt"
 	"github.com/tylerchr/parallel-database/query"
@@ -216,6 +218,25 @@ func (db *Database) evaluateFilters(filters []query.QueryFilter, songMap map[str
 			if passed := bytes.Contains(songMap[filter.Column], []byte(filter.Operand)); !passed {
 				return false, nil
 			}
+		case "<":
+			operand, _ := strconv.Atoi(filter.Operand)
+
+			var columnData float64
+			binary.Read(bytes.NewReader(songMap[filter.Column]), binary.BigEndian, &columnData)
+
+			if columnData > float64(operand) {
+				return false, nil
+			}
+
+		case ">":
+			operand, _ := strconv.Atoi(filter.Operand)
+
+			var columnData float64
+			binary.Read(bytes.NewReader(songMap[filter.Column]), binary.BigEndian, &columnData)
+
+			if columnData < float64(operand) {
+				return false, nil
+			}
 		default:
 			return false, fmt.Errorf("unsupported operator: %s\n", filter.Operator)
 		}
@@ -273,7 +294,6 @@ func (db *Database) validateQuerySemantics(q query.Query) error {
 		case "int":
 			switch filter.Operator {
 			case "equals":
-			case "between":
 			case "<":
 			case ">":
 			case "contains":
@@ -286,7 +306,6 @@ func (db *Database) validateQuerySemantics(q query.Query) error {
 		case "float":
 			switch filter.Operator {
 			case "equals":
-			case "between":
 			case "<":
 			case ">":
 			case "contains":
@@ -302,8 +321,6 @@ func (db *Database) validateQuerySemantics(q query.Query) error {
 			case "<":
 				fallthrough
 			case ">":
-				fallthrough
-			case "between":
 				fallthrough
 			default:
 				return fmt.Errorf("Invalid operator '%s' for field type '%s'",
