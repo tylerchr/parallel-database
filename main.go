@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/carmark/pseudo-terminal-go/terminal"
+	"github.com/jaredririe/pseudo-terminal-go/terminal"
 	"github.com/tylerchr/parallel-database/query/parser"
 )
 
