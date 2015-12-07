@@ -29,3 +29,5 @@ _testmain.go
 
 # large database file
 data.db
+all_songs.tsv
+

@@ -45,7 +45,16 @@ func main() {
 			switch line {
 
 			case "help":
-				fmt.Println("sorry")
+				fmt.Println("Commands you can try:")
+				fmt.Println("\tfields\tshows fields in database")
+				fmt.Println("\tstats\tdisplays database information")
+				fmt.Println("\t<Query>\tsee below")
+				fmt.Println("\thistory\tdisplays command history")
+				fmt.Println("\tquit\texit\n")
+
+				fmt.Println("Queries use an SQL-like syntax. Examples:")
+				fmt.Println("\tSELECT avg(duration) WHERE title contains \"One\"")
+				fmt.Println("\tSELECT max(artist_familiarity) WHERE title contains \"One\" AND artist_hotttnesss > 0.5")
 
 			case "quit":
 				fmt.Println("exit")
