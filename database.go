@@ -18,7 +18,7 @@ type Database struct {
 
 func NewDatabase(file string) (*Database, error) {
 
-	db, err := bolt.Open("data.db", 0600, nil)
+	db, err := bolt.Open("data.db", 0600, &bolt.Options{ReadOnly: true})
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +62,7 @@ func reduceAccumulators(accs [][]Accumulator) []Accumulator {
 	return reducedAccs
 }
 
-func (db *Database) Execute(q query.Query) error {
+func (db *Database) Execute(q query.Query) ([]string, error) {
 	numNodes := 2
 
 	responses := make(chan []Accumulator)
@@ -75,7 +75,7 @@ func (db *Database) Execute(q query.Query) error {
 
 	if err != nil {
 		fmt.Println(err)
-		return err
+		return nil, err
 	}
 
 	accs := make([][]Accumulator, numNodes)
@@ -108,11 +108,13 @@ func (db *Database) Execute(q query.Query) error {
 
 	reducedAccs := reduceAccumulators(accs)
 	
-	for _, acc := range reducedAccs {
+	res := make([]string, len(reducedAccs))
+	for idx, acc := range reducedAccs {
 		fmt.Printf("%#v\n", acc)
+		res[idx] = fmt.Sprintf("%#v", acc)
 	}
 
-	return err
+	return res, err
 
 }
 

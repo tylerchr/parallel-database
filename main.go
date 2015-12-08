@@ -1,100 +1,71 @@
 package main
 
 import (
+	"flag"
 	"fmt"
-	"io"
-	"strings"
-	"time"
+	"net"
+	"net/rpc"
 
-	"github.com/jaredririe/pseudo-terminal-go/terminal"
-	"github.com/tylerchr/parallel-database/query/parser"
+	"github.com/boltdb/bolt"
+	"github.com/tylerchr/parallel-database/query"
 )
 
+type DatabaseRPC struct {
+	DB *Database
+}
+
+func (db *DatabaseRPC) Execute(q query.Query, accs *[]string) error {
+
+	fmt.Printf("Running a query: %#v\n", q)
+	if results, err := db.DB.Execute(q); err != nil {
+		return err
+	} else {
+		*accs = results
+	}
+
+	return nil
+}
+
+func (db *DatabaseRPC) Fields(_ bool, fields *map[string]string) error {
+	fmt.Printf("Responding with fields\n")
+	*fields = db.DB.Fields()
+	return nil
+}
+
+func (db *DatabaseRPC) Stats(_ bool, stats *bolt.Stats) error {
+	fmt.Printf("Responding with stats\n")
+	*stats = db.DB.BoltDatabase.Stats()
+	return nil
+}
+
 func main() {
+
+	port := flag.Int("port", 6771, "the port to start the RPC server on")
+	flag.Parse()
+	fmt.Printf("Starting server on port: %d\n", *port)
+
 	db, _ := NewDatabase("data.db")
 
-	// query := query.Query{
-	// 	Metrics: []query.QueryMetric{
-	// 		query.QueryMetric{Column: "song_hotttnesss", Metric: "average"},
-	// 	},
-	// 	Filter: []query.QueryFilter{
-	// 		// query.QueryFilter{Column: "title", Operator: "contains", Operand: "One"},
-	// 		// query.QueryFilter{Column: "artist_location", Operator: "equals", Operand: "Detroit, MI"},
-	// 	},
-	// }
-	// executeQuery(db, query)
+	die := make(chan struct{})
 
-	term, err := terminal.NewWithStdInOut()
-	if err != nil {
-		panic(err)
-	}
-
-	defer term.ReleaseFromStdInOut() // defer this
-	fmt.Println("[ctrl-d or 'quit' to exit]")
-	term.SetPrompt("⚡  ")
-	line, err := term.ReadLine()
-	for {
-		if err == io.EOF {
-			term.Write([]byte(line))
-			fmt.Println()
-			return
+	// start the RPC server
+	go func() {
+		rpc.Register(&DatabaseRPC{DB: db})
+		l, e := net.Listen("tcp", fmt.Sprintf(":%d", *port))
+		if e != nil {
+			panic(e)
 		}
-		if (err != nil && strings.Contains(err.Error(), "control-c break")) || len(line) == 0 {
-			line, err = term.ReadLine()
-		} else {
-			switch line {
-
-			case "help":
-				fmt.Println("Commands you can try:")
-				fmt.Println("\tfields\tshows fields in database")
-				fmt.Println("\tstats\tdisplays database information")
-				fmt.Println("\t<Query>\tsee below")
-				fmt.Println("\thistory\tdisplays command history")
-				fmt.Println("\tquit\texit\n")
-
-				fmt.Println("Queries use an SQL-like syntax. Examples:")
-				fmt.Println("\tSELECT avg(duration) WHERE title contains \"One\"")
-				fmt.Println("\tSELECT max(artist_familiarity) WHERE title contains \"One\" AND artist_hotttnesss > 0.5")
-
-			case "quit":
-				fmt.Println("exit")
-				db.Close()
-				return
-
-			case "stats":
-				fmt.Printf("%#v\n", db.BoltDatabase.Stats())
-
-			case "history":
-				for i, entry := range term.GetHistory() {
-					fmt.Printf("% 3d %s\n", i, entry)
-				}
-
-			case "fields":
-				var idx int32
-				for field, fieldType := range db.Fields() {
-					fmt.Printf("% 3d %-24s => %s\n", idx, field, fieldType)
-					idx++
-				}
-			case "easter egg":
-				fmt.Printf("🐇\n\r")
-
-			default:
-				if q, err := parser.ParseQuery(line); err != nil {
-					fmt.Printf("[error] %v\n", err)
-				} else {
-					fmt.Printf("[parsed] Metrics: %v Filters: %v\n", q.Metrics, q.Filter)
-					t0 := time.Now()
-
-					db.Execute(q)
-					// db.ExecuteRange(q, byte(0x00), byte(0xFF))
-
-					fmt.Printf("took %v\n", time.Now().Sub(t0))
-				}
+		for {
+			fmt.Println("Waiting for connection...")
+			conn, err := l.Accept()
+			if err != nil {
+				continue
 			}
-
-			line, err = term.ReadLine()
+			go rpc.ServeConn(conn)
 		}
-	}
-	db.Close()
-	term.Write([]byte(line))
+		die <- struct{}{}
+	}()
+
+	<-die
+
 }

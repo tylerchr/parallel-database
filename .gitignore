@@ -31,3 +31,4 @@ _testmain.go
 data.db
 all_songs.tsv
 
+/cli/cli
