@@ -73,7 +73,7 @@ func main() {
 
 			case "stats":
 
-				var stats bolt.Stats
+				var stats bolt.BucketStats
 				if err := client.Call("DatabaseRPC.Stats", true, &stats); err != nil {
 					fmt.Println("Failed to connect to database server")
 				} else {

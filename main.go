@@ -19,7 +19,7 @@ type DatabaseRPC struct {
 func (db *DatabaseRPC) Execute(q query.Query, accs *[]string) error {
 
 	numHosts := len(db.Hosts)
-	if q.Hosts < numHosts {
+	if q.Hosts > 0 && q.Hosts < numHosts {
 		numHosts = q.Hosts
 	}
 
@@ -148,10 +148,12 @@ func (db *DatabaseRPC) Fields(_ bool, fields *map[string]string) error {
 	return nil
 }
 
-func (db *DatabaseRPC) Stats(_ bool, stats *bolt.Stats) error {
+func (db *DatabaseRPC) Stats(_ bool, stats *bolt.BucketStats) error {
 	fmt.Printf("Responding with stats\n")
-	*stats = db.DB.BoltDatabase.Stats()
-	return nil
+	return db.DB.BoltDatabase.View(func(tx *bolt.Tx) error {
+		*stats = tx.Bucket([]byte("songs")).Stats()
+		return nil
+	})
 }
 
 func main() {
