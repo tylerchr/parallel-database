@@ -4,7 +4,7 @@ import (
 	// "reflect"
 	"testing"
 
-    // "github.com/tylerchr/parallel-database/query"
+	// "github.com/tylerchr/parallel-database/query"
 )
 
 func TestParse(t *testing.T) {

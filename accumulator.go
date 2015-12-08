@@ -1,24 +1,24 @@
 package main
 
 import (
-	"encoding/binary"
 	"bytes"
-	"math"
+	"encoding/binary"
 	"fmt"
+	"math"
 )
 
-type Accumulator interface{
+type Accumulator interface {
 	Column() string
 	Add(data []byte) error
 	CanAccumulateType(fieldType string) bool
 	Reduce(acc Accumulator) error
 }
 
-type AverageAccumulator struct{
+type AverageAccumulator struct {
 	Col string
 
 	sum float64
-	ct int64
+	ct  int64
 }
 
 func (aa *AverageAccumulator) Column() string {
@@ -46,7 +46,7 @@ func (a *AverageAccumulator) Reduce(acc Accumulator) error {
 		a.sum += b.sum
 		a.ct += b.ct
 	} else {
-		return fmt.Errorf("ERROR: Got the wrong type in reduce function") 
+		return fmt.Errorf("ERROR: Got the wrong type in reduce function")
 	}
 
 	return nil
@@ -66,7 +66,7 @@ func (aa *AverageAccumulator) CanAccumulateType(fieldType string) bool {
 	}
 }
 
-type CountAccumulator struct{
+type CountAccumulator struct {
 	Col string
 
 	ct int64
@@ -89,12 +89,12 @@ func (ca *CountAccumulator) Reduce(acc Accumulator) error {
 	if b, ok := acc.(*CountAccumulator); ok {
 		ca.ct += b.ct
 	} else {
-		return fmt.Errorf("ERROR: Got the wrong type in reduce function") 
+		return fmt.Errorf("ERROR: Got the wrong type in reduce function")
 	}
 	return nil
 }
 
-type MinAccumulator struct{
+type MinAccumulator struct {
 	Col string
 
 	min float64
@@ -123,7 +123,7 @@ func (ma *MinAccumulator) Reduce(acc Accumulator) error {
 			ma.min = b.min
 		}
 	} else {
-		return fmt.Errorf("ERROR: Got the wrong type in reduce function") 
+		return fmt.Errorf("ERROR: Got the wrong type in reduce function")
 	}
 	return nil
 }
@@ -141,7 +141,7 @@ func (ma *MinAccumulator) CanAccumulateType(fieldType string) bool {
 	}
 }
 
-type MaxAccumulator struct{
+type MaxAccumulator struct {
 	Col string
 
 	max float64
@@ -170,7 +170,7 @@ func (ma *MaxAccumulator) Reduce(acc Accumulator) error {
 			ma.max = b.max
 		}
 	} else {
-		return fmt.Errorf("ERROR: Got the wrong type in reduce function") 
+		return fmt.Errorf("ERROR: Got the wrong type in reduce function")
 	}
 	return nil
 }
@@ -188,7 +188,7 @@ func (ma *MaxAccumulator) CanAccumulateType(fieldType string) bool {
 	}
 }
 
-type DebugAccumulator struct{
+type DebugAccumulator struct {
 	Col string
 
 	ct int64

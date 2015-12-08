@@ -51,7 +51,6 @@ const yyErrCode = 2
 const yyMaxDepth = 200
 
 //line parser.y:82
-
 type token struct {
 	tok int
 	val string

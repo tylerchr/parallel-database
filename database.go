@@ -2,11 +2,11 @@ package main
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
 	"reflect"
-	"sync"
 	"strconv"
-	"encoding/binary"
+	"sync"
 
 	"github.com/boltdb/bolt"
 	"github.com/tylerchr/parallel-database/query"
@@ -87,7 +87,7 @@ func (db *Database) Execute(q query.Query) ([]string, error) {
 			start := node * (0xFF / numNodes)
 			end := start + (0xFF / numNodes)
 
-			if node + 1 < numNodes {
+			if node+1 < numNodes {
 				end--
 			} else {
 				end = 0xFF
@@ -107,7 +107,7 @@ func (db *Database) Execute(q query.Query) ([]string, error) {
 	wg.Wait()
 
 	reducedAccs := reduceAccumulators(accs)
-	
+
 	res := make([]string, len(reducedAccs))
 	for idx, acc := range reducedAccs {
 		fmt.Printf("%#v\n", acc)

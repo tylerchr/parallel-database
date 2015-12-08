@@ -29,7 +29,7 @@ func main() {
 			} else if keyCode == 37 {
 				fmt.Printf("\b")
 				bufferIdx--
-			// } else if keyCode == 39 {
+				// } else if keyCode == 39 {
 				// fmt.Printf("\b")
 			} else if ascii == 13 {
 				fmt.Printf("\r\n")
