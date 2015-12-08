@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/boltdb/bolt"
+	"github.com/fatih/color"
 	"github.com/jaredririe/pseudo-terminal-go/terminal"
 	"github.com/tylerchr/parallel-database/query/parser"
 )
@@ -29,6 +30,9 @@ func main() {
 	defer term.ReleaseFromStdInOut() // defer this
 	fmt.Println("[ctrl-d or 'quit' to exit]")
 	term.SetPrompt("⚡  ")
+
+	red := color.New(color.FgRed).SprintFunc()
+	green := color.New(color.FgGreen).SprintFunc()
 
 	var line string
 
@@ -103,8 +107,14 @@ func main() {
 				if err := client.Call("DatabaseRPC.Hostlist", true, &hosts); err != nil {
 					fmt.Println("Failed to connect to database server")
 				} else {
-					for field, fieldType := range hosts {
-						fmt.Printf("%s => %s\n", field, fieldType)
+					idx := 0
+					for host, uptime := range hosts {
+						if uptime > 0 {
+							fmt.Printf("% 3d  %s %s (uptime: %s)\n", idx, green(" ONLINE"), host, uptime)
+						} else {
+							fmt.Printf("% 3d  %s %s\n", idx, red("OFFLINE"), host)
+						}
+						idx += 1
 					}
 				}
 

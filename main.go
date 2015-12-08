@@ -172,6 +172,8 @@ func (db *DatabaseRPC) Hostlist(_ bool, hosts *map[string]time.Duration) error {
 
 	for _, host := range db.Hosts {
 
+		host_durations[host] = time.Duration(0)
+
 		if client, err := rpc.Dial("tcp", host); err != nil {
 			// error
 		} else {
@@ -189,17 +191,17 @@ func (db *DatabaseRPC) Hostlist(_ bool, hosts *map[string]time.Duration) error {
 }
 
 func getSlurmHosts() []string {
-	
+
 	hosts := make([]string, 0)
 	nodelist := os.Getenv("SLURM_JOB_NODELIST")
-	
+
 	if nodelist != "" {
-		
+
 		cmd := exec.Command("scontrol", "show", "hostname", nodelist)
 		nodes, err := cmd.Output()
 
 		if err == nil {
-			
+
 			for _, host := range bytes.Split(nodes, []byte("\n")) {
 				if len(host) != 0 {
 					hosts = append(hosts, string(host) + ":6771")
@@ -207,7 +209,7 @@ func getSlurmHosts() []string {
 			}
 
 		}
-		
+
 	}
 
 	return hosts
@@ -217,7 +219,7 @@ func getSlurmHosts() []string {
 func main() {
 
 	nodes := getSlurmHosts()
-	var defaultNodes string
+	defaultNodes := ":6771"
 
 	if len(nodes) > 0 {
 		defaultNodes = strings.Join(nodes, ",")
