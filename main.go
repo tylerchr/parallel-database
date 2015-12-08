@@ -7,6 +7,9 @@ import (
 	"net/rpc"
 	"strings"
 	"time"
+	"os"
+	"os/exec"
+	"bytes"
 
 	"github.com/boltdb/bolt"
 	"github.com/tylerchr/parallel-database/query"
@@ -185,10 +188,47 @@ func (db *DatabaseRPC) Hostlist(_ bool, hosts *map[string]time.Duration) error {
 	return nil
 }
 
+func getSlurmHosts() []string {
+	
+	hosts := make([]string, 0)
+	nodelist := os.Getenv("SLURM_JOB_NODELIST")
+	
+	if nodelist != "" {
+		
+		cmd := exec.Command("scontrol", "show", "hostname", nodelist)
+		nodes, err := cmd.Output()
+
+		if err == nil {
+			
+			for _, host := range bytes.Split(nodes, []byte("\n")) {
+				if len(host) != 0 {
+					hosts = append(hosts, string(host) + ":6771")
+				}
+			}
+
+		}
+		
+	}
+
+	return hosts
+
+}
+
 func main() {
 
+	nodes := getSlurmHosts()
+	var defaultNodes string
+
+	if len(nodes) > 0 {
+		defaultNodes = strings.Join(nodes, ",")
+	}
+
+	if defaultNodes != "" {
+		fmt.Println("Starting with slurm nodes: ", defaultNodes)
+	}
+
 	port := flag.Int("port", 6771, "the port to start the RPC server on")
-	hostPortList := flag.String("hosts", ":6771", "comma-separated list of cluster ports")
+	hostPortList := flag.String("hosts", defaultNodes, "comma-separated list of cluster ports")
 	flag.Parse()
 
 	fmt.Printf("Starting server on port: %d\n", *port)
