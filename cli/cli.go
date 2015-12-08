@@ -56,6 +56,7 @@ func main() {
 				fmt.Println("Commands you can try:")
 				fmt.Println("\tfields\tshows fields in database")
 				fmt.Println("\tstats\tdisplays database information")
+				fmt.Println("\thosts\tdisplays currently running hosts and their uptime")
 				fmt.Println("\t<Query>\tsee below")
 				fmt.Println("\thistory\tdisplays command history")
 				fmt.Println("\tquit\texit\n")
@@ -96,6 +97,17 @@ func main() {
 						idx++
 					}
 				}
+
+			case "hosts":
+				var hosts map[string]time.Duration
+				if err := client.Call("DatabaseRPC.Hostlist", true, &hosts); err != nil {
+					fmt.Println("Failed to connect to database server")
+				} else {
+					for field, fieldType := range hosts {
+						fmt.Printf("%s => %s\n", field, fieldType)
+					}
+				}
+
 			case "easter egg":
 				fmt.Printf("🐇\n\r")
 
