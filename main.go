@@ -6,14 +6,21 @@ import (
 	"net"
 	"net/rpc"
 	"strings"
+	"time"
 
 	"github.com/boltdb/bolt"
 	"github.com/tylerchr/parallel-database/query"
 )
 
 type DatabaseRPC struct {
-	DB    *Database
-	Hosts []string
+	DB        *Database
+	Hosts     []string
+	startedAt time.Time
+}
+
+func (db *DatabaseRPC) Uptime(_ bool, up_time *time.Duration) error {
+	*up_time = time.Since(db.startedAt)
+	return nil
 }
 
 func (db *DatabaseRPC) Execute(q query.Query, accs *[]string) error {
@@ -156,6 +163,28 @@ func (db *DatabaseRPC) Stats(_ bool, stats *bolt.BucketStats) error {
 	})
 }
 
+func (db *DatabaseRPC) Hostlist(_ bool, hosts *map[string]time.Duration) error {
+	fmt.Printf("Responding with hosts\n")
+	var host_durations map[string]time.Duration = make(map[string]time.Duration)
+
+	for _, host := range db.Hosts {
+
+		if client, err := rpc.Dial("tcp", host); err != nil {
+			// error
+		} else {
+			var uptime time.Duration
+			if err := client.Call("DatabaseRPC.Uptime", true, &uptime); err != nil {
+				// error
+			} else {
+				host_durations[host] = uptime
+			}
+		}
+
+	}
+	*hosts = host_durations
+	return nil
+}
+
 func main() {
 
 	port := flag.Int("port", 6771, "the port to start the RPC server on")
@@ -176,7 +205,7 @@ func main() {
 
 	// start the RPC server
 	go func() {
-		rpc.Register(&DatabaseRPC{DB: database, Hosts: hosts})
+		rpc.Register(&DatabaseRPC{DB: database, Hosts: hosts, startedAt: time.Now()})
 		l, e := net.Listen("tcp", fmt.Sprintf(":%d", *port))
 		if e != nil {
 			panic(e)
