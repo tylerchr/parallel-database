@@ -43,7 +43,7 @@ func (db *Database) Fields() map[string]string {
 
 }
 
-func reduceAccumulators(accs [][]Accumulator) []Accumulator {
+func ReduceAccumulators(accs [][]Accumulator) []Accumulator {
 
 	reducedAccs := make([]Accumulator, len(accs[0]))
 
@@ -93,7 +93,7 @@ func (db *Database) Execute(q query.Query) ([]string, error) {
 				end = 0xFF
 			}
 
-			queryError, partialAccs := db.ExecuteRange(q, byte(start), byte(end))
+			partialAccs, queryError := db.ExecuteRange(q, byte(start), byte(end))
 
 			if queryError != nil {
 				err = queryError
@@ -106,7 +106,7 @@ func (db *Database) Execute(q query.Query) ([]string, error) {
 
 	wg.Wait()
 
-	reducedAccs := reduceAccumulators(accs)
+	reducedAccs := ReduceAccumulators(accs)
 
 	res := make([]string, len(reducedAccs))
 	for idx, acc := range reducedAccs {
@@ -118,7 +118,7 @@ func (db *Database) Execute(q query.Query) ([]string, error) {
 
 }
 
-func (db *Database) ExecuteRange(q query.Query, start, end byte) (error, []Accumulator) {
+func (db *Database) ExecuteRange(q query.Query, start, end byte) ([]Accumulator, error) {
 
 	accs := make([]Accumulator, len(q.Metrics))
 	for i, metric := range q.Metrics {
@@ -204,7 +204,7 @@ func (db *Database) ExecuteRange(q query.Query, start, end byte) (error, []Accum
 
 	})
 
-	return err, accs
+	return accs, err
 
 }
 

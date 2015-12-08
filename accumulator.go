@@ -17,8 +17,8 @@ type Accumulator interface {
 type AverageAccumulator struct {
 	Col string
 
-	sum float64
-	ct  int64
+	Sum float64
+	Ct  int64
 }
 
 func (aa *AverageAccumulator) Column() string {
@@ -30,8 +30,8 @@ func (aa *AverageAccumulator) Add(data []byte) error {
 	var number float64
 	binary.Read(bytes.NewReader(data), binary.BigEndian, &number)
 	if !math.IsNaN(number) {
-		aa.sum += number
-		aa.ct += 1
+		aa.Sum += number
+		aa.Ct += 1
 	} else {
 		// TODO: we should not save NaN values to the db
 		// return fmt.Errorf("field not a number: %v", data)
@@ -43,8 +43,8 @@ func (aa *AverageAccumulator) Add(data []byte) error {
 func (a *AverageAccumulator) Reduce(acc Accumulator) error {
 
 	if b, ok := acc.(*AverageAccumulator); ok {
-		a.sum += b.sum
-		a.ct += b.ct
+		a.Sum += b.Sum
+		a.Ct += b.Ct
 	} else {
 		return fmt.Errorf("ERROR: Got the wrong type in reduce function")
 	}
@@ -69,7 +69,7 @@ func (aa *AverageAccumulator) CanAccumulateType(fieldType string) bool {
 type CountAccumulator struct {
 	Col string
 
-	ct int64
+	Ct int64
 }
 
 func (aa *CountAccumulator) Column() string {
@@ -77,7 +77,7 @@ func (aa *CountAccumulator) Column() string {
 }
 
 func (aa *CountAccumulator) Add(data []byte) error {
-	aa.ct += 1
+	aa.Ct += 1
 	return nil
 }
 
@@ -87,7 +87,7 @@ func (ca *CountAccumulator) CanAccumulateType(fieldType string) bool {
 
 func (ca *CountAccumulator) Reduce(acc Accumulator) error {
 	if b, ok := acc.(*CountAccumulator); ok {
-		ca.ct += b.ct
+		ca.Ct += b.Ct
 	} else {
 		return fmt.Errorf("ERROR: Got the wrong type in reduce function")
 	}
@@ -97,7 +97,7 @@ func (ca *CountAccumulator) Reduce(acc Accumulator) error {
 type MinAccumulator struct {
 	Col string
 
-	min float64
+	Min float64
 }
 
 func (aa *MinAccumulator) Column() string {
@@ -107,8 +107,8 @@ func (aa *MinAccumulator) Column() string {
 func (aa *MinAccumulator) Add(data []byte) error {
 	var number float64
 	binary.Read(bytes.NewReader(data), binary.BigEndian, &number)
-	if !math.IsNaN(number) && number < aa.min {
-		aa.min = number
+	if !math.IsNaN(number) && number < aa.Min {
+		aa.Min = number
 	} else {
 		// TODO: we should not save NaN values to the db
 		// return fmt.Errorf("field not a number: %v", data)
@@ -119,8 +119,8 @@ func (aa *MinAccumulator) Add(data []byte) error {
 
 func (ma *MinAccumulator) Reduce(acc Accumulator) error {
 	if b, ok := acc.(*MinAccumulator); ok {
-		if ma.min > b.min {
-			ma.min = b.min
+		if ma.Min > b.Min {
+			ma.Min = b.Min
 		}
 	} else {
 		return fmt.Errorf("ERROR: Got the wrong type in reduce function")
@@ -144,7 +144,7 @@ func (ma *MinAccumulator) CanAccumulateType(fieldType string) bool {
 type MaxAccumulator struct {
 	Col string
 
-	max float64
+	Max float64
 }
 
 func (aa *MaxAccumulator) Column() string {
@@ -154,8 +154,8 @@ func (aa *MaxAccumulator) Column() string {
 func (aa *MaxAccumulator) Add(data []byte) error {
 	var number float64
 	binary.Read(bytes.NewReader(data), binary.BigEndian, &number)
-	if !math.IsNaN(number) && number > aa.max {
-		aa.max = number
+	if !math.IsNaN(number) && number > aa.Max {
+		aa.Max = number
 	} else {
 		// TODO: we should not save NaN values to the db
 		// return fmt.Errorf("field not a number: %v", data)
@@ -166,8 +166,8 @@ func (aa *MaxAccumulator) Add(data []byte) error {
 
 func (ma *MaxAccumulator) Reduce(acc Accumulator) error {
 	if b, ok := acc.(*MaxAccumulator); ok {
-		if ma.max < b.max {
-			ma.max = b.max
+		if ma.Max < b.Max {
+			ma.Max = b.Max
 		}
 	} else {
 		return fmt.Errorf("ERROR: Got the wrong type in reduce function")
@@ -186,29 +186,4 @@ func (ma *MaxAccumulator) CanAccumulateType(fieldType string) bool {
 	default:
 		return false
 	}
-}
-
-type DebugAccumulator struct {
-	Col string
-
-	ct int64
-}
-
-func (aa *DebugAccumulator) Column() string {
-	return aa.Col
-}
-
-func (aa *DebugAccumulator) Add(data []byte) error {
-	fmt.Printf("% 3d  %s\n", aa.ct, data)
-	aa.ct += 1
-	return nil
-}
-
-func (da *DebugAccumulator) Reduce(acc Accumulator) error {
-	fmt.Println("Reducing!!!")
-	return nil
-}
-
-func (da *DebugAccumulator) CanAccumulateType(fieldType string) bool {
-	return true
 }

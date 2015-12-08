@@ -62,7 +62,10 @@ func main() {
 
 				fmt.Println("Queries use an SQL-like syntax. Examples:")
 				fmt.Println("\tSELECT avg(duration) WHERE title contains \"One\"")
-				fmt.Println("\tSELECT max(artist_familiarity) WHERE title contains \"One\" AND artist_hotttnesss > 0.5")
+				fmt.Println("\tSELECT max(artist_familiarity) WHERE title contains \"One\" AND artist_hotttnesss > 0.5\n")
+
+				fmt.Println("Control the max hosts to distribute across with HOSTS. Examples:")
+				fmt.Println("\tSELECT avg(duration) HOSTS 2")
 
 			case "quit":
 				fmt.Println("exit")

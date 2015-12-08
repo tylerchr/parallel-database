@@ -4,6 +4,7 @@ package parser
 import (
     "fmt"
     "strings"
+    "strconv"
     "text/scanner"
 
     "github.com/tylerchr/parallel-database/query"
@@ -19,9 +20,10 @@ import (
     metric query.QueryMetric
     filters []query.QueryFilter
     filter query.QueryFilter
+    numeric int
 }
 
-%token SELECT FROM WHERE AND
+%token SELECT FROM WHERE AND HOSTS
 %token GENERIC_IDENTIFIER
 
 %type <ident> GENERIC_IDENTIFIER
@@ -30,6 +32,8 @@ import (
 %type <metric> metric
 %type <filters> where_terms where_clause
 %type <filter> where_term
+%type <numeric> hosts_clause
+
 
 // average(song_hotttnesss)
 // average(song_hotttnesss) : is(artist_location, "Detroit, MI")
@@ -44,8 +48,8 @@ query
     ;
 
 sel
-    : SELECT metrics where_clause
-        { $$ = query.Query{Metrics: $2, Filter: $3} }
+    : SELECT metrics where_clause hosts_clause
+        { $$ = query.Query{Metrics: $2, Filter: $3, Hosts: $4} }
     ;
 
 metrics
@@ -77,6 +81,13 @@ where_terms
 where_term
     : GENERIC_IDENTIFIER GENERIC_IDENTIFIER GENERIC_IDENTIFIER
         { $$.Column, $$.Operator, $$.Operand = $1, $2, $3 }
+    ;
+
+hosts_clause
+    : HOSTS GENERIC_IDENTIFIER
+        { $$, _ = strconv.Atoi($2) }
+    |
+        { $$ = 0 }
     ;
 
 %%
@@ -141,6 +152,8 @@ func TokenizeQuery(q string) ([]token, error) {
             tokens = append(tokens, token{WHERE, ""})
         } else if s.TokenText() == "AND" {
             tokens = append(tokens, token{AND, ""})
+        } else if s.TokenText() == "HOSTS" {
+            tokens = append(tokens, token{HOSTS, ""})
         } else {
             text := s.TokenText()
             if strings.HasPrefix(text, "\"") && strings.HasSuffix(text, "\"") {

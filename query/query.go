@@ -1,8 +1,14 @@
 package query
 
+type RangedQuery struct {
+	Query      Query
+	Start, End byte
+}
+
 type Query struct {
 	Metrics []QueryMetric
 	Filter  []QueryFilter
+	Hosts   int
 }
 
 type QueryMetric struct {
